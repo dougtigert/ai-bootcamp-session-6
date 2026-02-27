@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Support for Overdue Todo Items: Users need a clear, visual way to identify which todos have not been completed by their due date."
 
+## Clarifications
+
+### Session 2026-02-27
+
+- Q: What specific visual treatment should be used for the overdue indicator? → A: Red/warning color + icon (e.g., exclamation or clock) - dual cue for accessibility
+- Q: Should overdue status be computed dynamically on-the-fly or stored in the database? → A: Computed dynamically on-the-fly (no storage, always current, simpler maintenance)
+- Q: How should due dates be stored and compared across different timezones? → A: Date-only, no timezone (treat as calendar date like "Feb 28", simplest, matches user mental model)
+- Q: Should users be able to sort or filter by overdue status, or should overdue todos be automatically prioritized in display order? → A: No special sorting - overdue todos stay in existing sort order, only visually distinguished
+- Q: How should screen reader users or users with visual impairments identify overdue status? → A: Add ARIA label/attribute (e.g., aria-label="Overdue") to announce status to screen readers
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Visual Identification of Overdue Todos (Priority: P1)
@@ -58,9 +68,9 @@ As time progresses and the calendar date changes, todos that become overdue shou
 
 - What happens when a todo has no due date? (Should never be marked as overdue)
 - How does the system handle todos with due dates far in the past (e.g., 1 year ago)? (Should be treated the same as 1 day overdue)
-- What happens when the user's system clock is incorrect? (Use client-side time for consistency with user's perception)
+- What happens when the user's system clock is incorrect? (Use client-side calendar date in user's local timezone for consistency with user's perception and environment)
 - How should archived or deleted todos be handled? (Overdue status is not relevant for archived/deleted items)
-- What about todos due at a specific time of day? (Compare only the date portion, ignore time)
+- What about todos due at a specific time of day? (Compare only the calendar date portion, ignore time; due dates are stored as date-only values)
 
 ## Requirements *(mandatory)*
 
@@ -69,16 +79,30 @@ As time progresses and the calendar date changes, todos that become overdue shou
 - **FR-001**: System MUST identify a todo as overdue when its due date is before the current date AND the todo status is incomplete
 - **FR-002**: System MUST NOT mark a todo as overdue if its due date is today or in the future
 - **FR-003**: System MUST NOT mark a todo as overdue if the todo is marked as complete, regardless of due date
-- **FR-004**: System MUST provide a clear visual indicator for overdue todos that distinguishes them from non-overdue todos
+- **FR-004**: System MUST provide a clear visual indicator for overdue todos using red/warning color combined with an icon (e.g., exclamation or clock icon) to ensure accessibility through dual visual cues, AND MUST include appropriate ARIA attributes (e.g., aria-label="Overdue") to announce overdue status to screen readers
 - **FR-005**: System MUST display overdue status consistently across all views where todos are displayed
 - **FR-006**: System MUST treat todos without a due date as never being overdue
 - **FR-007**: System MUST update the overdue status immediately when a todo's completion status changes
 - **FR-008**: System MUST update the overdue status immediately when a todo's due date is modified
 - **FR-009**: System MUST use date-only comparison (ignoring time of day) when determining if a todo is overdue
+- **FR-010**: System MUST compute overdue status dynamically at query/display time rather than storing it as a persisted field
+- **FR-011**: System MUST store due dates as calendar dates without timezone information (e.g., "2026-02-28") and compare against the current calendar date in the user's local timezone
+- **FR-012**: System MUST maintain existing sort order for todos regardless of overdue status; overdue todos are not automatically reordered or prioritized
+
+### Out of Scope
+
+- Sorting todos by overdue status
+- Filtering to show only overdue todos
+- Separate "Overdue" section or grouping in the UI
+
+### Non-Functional Requirements
+
+- **NFR-001**: Overdue status computation MUST complete within 50ms for lists of up to 1000 todos to ensure responsive UI performance
+- **NFR-002**: Overdue indicators MUST meet WCAG 2.1 Level AA accessibility standards, including sufficient color contrast (minimum 4.5:1) and semantic markup for assistive technologies
 
 ### Key Entities
 
-- **Todo**: A task item that may have a due date and completion status. The overdue state is derived from comparing the due date (if present) against the current date when the todo is incomplete.
+- **Todo**: A task item that may have a due date (stored as a calendar date without timezone, e.g., "2026-02-28") and completion status. The overdue state is computed dynamically by comparing the due date (if present) against the current calendar date in the user's local timezone when the todo is incomplete. Overdue status is not stored in the database.
 
 ## Success Criteria *(mandatory)*
 
