@@ -15,6 +15,8 @@
   --border-color: #e0e0e0;
   --success-color: #2e7d32;
   --danger-color: #c62828;
+  --overdue-color: #d32f2f;
+  --overdue-bg: #ffebee;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
@@ -47,6 +49,8 @@
   --border-color: #404040;
   --success-color: #66bb6a;
   --danger-color: #ef5350;
+  --overdue-color: #ef5350;
+  --overdue-bg: #3d2020;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);

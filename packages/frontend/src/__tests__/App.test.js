@@ -232,4 +232,225 @@ describe('App Component', () => {
     fireEvent.click(themToggleAfter);
     expect(localStorage.getItem('todoAppTheme')).toBe('light');
   });
+
+  // Integration tests for consistent overdue display (User Story 2)
+  describe('Overdue Indicator Consistency', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-02-27')); // Mock current date
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('renders overdue indicators consistently across the app', async () => {
+      server.use(
+        rest.get('/api/todos', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json([
+              {
+                id: 1,
+                title: 'Overdue Task 1',
+                dueDate: '2026-02-20',
+                completed: 0,
+                createdAt: '2026-02-15T00:00:00Z',
+                isOverdue: true
+              },
+              {
+                id: 2,
+                title: 'Not Overdue Task',
+                dueDate: '2026-03-01',
+                completed: 0,
+                createdAt: '2026-02-26T00:00:00Z',
+                isOverdue: false
+              }
+            ])
+          );
+        })
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Overdue Task 1')).toBeInTheDocument();
+      });
+
+      // Should have exactly 1 overdue indicator
+      const overdueIndicators = screen.getAllByRole('status');
+      expect(overdueIndicators).toHaveLength(1);
+    });
+
+    test('overdue indicators remain consistent when todos are filtered or sorted', async () => {
+      server.use(
+        rest.get('/api/todos', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json([
+              {
+                id: 1,
+                title: 'Overdue A',
+                dueDate: '2026-02-20',
+                completed: 0,
+                createdAt: '2026-02-15T00:00:00Z',
+                isOverdue: true
+              },
+              {
+                id: 2,
+                title: 'Overdue B',
+                dueDate: '2026-02-25',
+                completed: 0,
+                createdAt: '2026-02-20T00:00:00Z',
+                isOverdue: true
+              },
+              {
+                id: 3,
+                title: 'Not Overdue',
+                dueDate: '2026-03-01',
+                completed: 0,
+                createdAt: '2026-02-26T00:00:00Z',
+                isOverdue: false
+              }
+            ])
+          );
+        })
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Overdue A')).toBeInTheDocument();
+      });
+
+      // Should have exactly 2 overdue indicators
+      const overdueIndicators = screen.getAllByRole('status');
+      expect(overdueIndicators).toHaveLength(2);
+    });
+  });
+
+  // Integration tests for real-time updates (User Story 3)
+  describe('Real-time Overdue Status Updates', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-02-27')); // Mock current date
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('overdue indicator updates immediately when todo is completed', async () => {
+      server.use(
+        rest.get('/api/todos', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json([
+              {
+                id: 1,
+                title: 'Overdue Task',
+                dueDate: '2026-02-20',
+                completed: 0,
+                createdAt: '2026-02-15T00:00:00Z',
+                isOverdue: true
+              }
+            ])
+          );
+        }),
+        rest.patch('/api/todos/1/toggle', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              id: 1,
+              title: 'Overdue Task',
+              dueDate: '2026-02-20',
+              completed: 1,
+              createdAt: '2026-02-15T00:00:00Z',
+              isOverdue: false
+            })
+          );
+        })
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Overdue Task')).toBeInTheDocument();
+      });
+
+      // Initially has overdue indicator
+      expect(screen.getByRole('status')).toBeInTheDocument();
+
+      // Complete the todo
+      const checkbox = screen.getByRole('checkbox');
+      fireEvent.click(checkbox);
+
+      // Overdue indicator should disappear immediately after completion
+      await waitFor(() => {
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      });
+    });
+
+    test('overdue indicator appears immediately when due date changes to past', async () => {
+      server.use(
+        rest.get('/api/todos', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json([
+              {
+                id: 1,
+                title: 'Future Task',
+                dueDate: '2026-03-01',
+                completed: 0,
+                createdAt: '2026-02-26T00:00:00Z',
+                isOverdue: false
+              }
+            ])
+          );
+        }),
+        rest.put('/api/todos/1', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              id: 1,
+              title: 'Now Overdue Task',
+              dueDate: '2026-02-20',
+              completed: 0,
+              createdAt: '2026-02-26T00:00:00Z',
+              isOverdue: true
+            })
+          );
+        })
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Future Task')).toBeInTheDocument();
+      });
+
+      // Initially no overdue indicator
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+      // Edit the todo to change due date (simulate the edit flow)
+      const editButton = screen.getByLabelText(/Edit "Future Task"/);
+      fireEvent.click(editButton);
+
+      // Fill in edit form with past due date
+      const titleInput = screen.getByDisplayValue('Future Task');
+      fireEvent.change(titleInput, { target: { value: 'Now Overdue Task' } });
+      
+      const dateInput = screen.getByLabelText(/Edit due date/);
+      fireEvent.change(dateInput, { target: { value: '2026-02-20' } });
+
+      // Save
+      const saveButton = screen.getByText('Save');
+      fireEvent.click(saveButton);
+
+      // Overdue indicator should appear immediately after update
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toBeInTheDocument();
+      });
+    });
+  });
 });

@@ -193,4 +193,54 @@ describe('TodoService', () => {
       await expect(TodoService.deleteTodo(999)).rejects.toThrow('Todo not found');
     });
   });
+
+  // Overdue helper function tests (Feature: Overdue Todo Items)
+  describe('isOverdue helper function', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-02-27')); // Mock current date
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should return true for incomplete todo with past due date', () => {
+      const todo = { dueDate: '2026-02-25', completed: false };
+      expect(TodoService.isOverdue(todo)).toBe(true);
+    });
+
+    it('should return false for todo due today', () => {
+      const todo = { dueDate: '2026-02-27', completed: false };
+      expect(TodoService.isOverdue(todo)).toBe(false);
+    });
+
+    it('should return false for todo due in future', () => {
+      const todo = { dueDate: '2026-02-28', completed: false };
+      expect(TodoService.isOverdue(todo)).toBe(false);
+    });
+
+    it('should return false for completed todo with past due date', () => {
+      const todo = { dueDate: '2026-02-25', completed: true };
+      expect(TodoService.isOverdue(todo)).toBe(false);
+    });
+
+    it('should return false for todo with no due date', () => {
+      const todo = { dueDate: null, completed: false };
+      expect(TodoService.isOverdue(todo)).toBe(false);
+    });
+
+    it('should return true for todo far in the past', () => {
+      const todo = { dueDate: '2025-01-01', completed: false };
+      expect(TodoService.isOverdue(todo)).toBe(true);
+    });
+
+    it('should handle completed field as number (0 = false, 1 = true)', () => {
+      const incompleteTodo = { dueDate: '2026-02-25', completed: 0 };
+      const completedTodo = { dueDate: '2026-02-25', completed: 1 };
+      
+      expect(TodoService.isOverdue(incompleteTodo)).toBe(true);
+      expect(TodoService.isOverdue(completedTodo)).toBe(false);
+    });
+  });
 });

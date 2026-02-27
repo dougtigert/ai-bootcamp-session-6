@@ -149,6 +149,23 @@ class TodoService {
       throw error;
     }
   }
+
+  /**
+   * Determines if a todo is overdue (client-side computation)
+   * @param {Object} todo - Todo object with dueDate and completed fields
+   * @returns {boolean} True if todo is overdue, false otherwise
+   */
+  static isOverdue(todo) {
+    // No due date means never overdue
+    if (!todo.dueDate) return false;
+    
+    // Completed todos are never overdue (handle both boolean and number)
+    if (todo.completed === true || todo.completed === 1) return false;
+    
+    // Compare due date with current date (date-only comparison)
+    const today = new Date().toISOString().split('T')[0];
+    return todo.dueDate < today;
+  }
 }
 
 export default TodoService;

@@ -226,6 +226,117 @@ describe('Todo API Endpoints', () => {
     });
   });
 
+  // Overdue status tests (Feature: Overdue Todo Items)
+  describe('Overdue status in API responses', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-02-27')); // Mock current date
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('GET /api/todos should return todos with isOverdue field', async () => {
+      // Create overdue todo
+      await request(app)
+        .post('/api/todos')
+        .send({ title: 'Overdue task', dueDate: '2026-02-25' });
+
+      const response = await request(app).get('/api/todos');
+      
+      expect(response.status).toBe(200);
+      const overdueTodo = response.body.find(t => t.title === 'Overdue task');
+      expect(overdueTodo).toHaveProperty('isOverdue');
+      expect(overdueTodo.isOverdue).toBe(true);
+    });
+
+    it('GET /api/todos should return isOverdue=false for non-overdue todos', async () => {
+      // Create future todo
+      await request(app)
+        .post('/api/todos')
+        .send({ title: 'Future task', dueDate: '2026-03-01' });
+
+      const response = await request(app).get('/api/todos');
+      
+      expect(response.status).toBe(200);
+      const futureTodo = response.body.find(t => t.title === 'Future task');
+      expect(futureTodo).toHaveProperty('isOverdue');
+      expect(futureTodo.isOverdue).toBe(false);
+    });
+
+    it('POST /api/todos should return created todo with isOverdue field', async () => {
+      const response = await request(app)
+        .post('/api/todos')
+        .send({ title: 'New overdue task', dueDate: '2026-02-25' });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('isOverdue');
+      expect(response.body.isOverdue).toBe(true);
+    });
+
+    it('POST /api/todos should return isOverdue=false for future due date', async () => {
+      const response = await request(app)
+        .post('/api/todos')
+        .send({ title: 'New future task', dueDate: '2026-03-01' });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('isOverdue');
+      expect(response.body.isOverdue).toBe(false);
+    });
+
+    it('PATCH /api/todos/:id/toggle should update isOverdue when completed', async () => {
+      // Create overdue todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ title: 'Task to complete', dueDate: '2026-02-25' });
+      
+      const todoId = createResponse.body.id;
+      expect(createResponse.body.isOverdue).toBe(true);
+
+      // Complete the todo
+      const toggleResponse = await request(app)
+        .patch(`/api/todos/${todoId}/toggle`);
+
+      expect(toggleResponse.status).toBe(200);
+      expect(toggleResponse.body.isOverdue).toBe(false); // Completed todos never overdue
+    });
+
+    it('GET /api/todos/:id should return todo with isOverdue field', async () => {
+      // Create overdue todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ title: 'Single overdue task', dueDate: '2026-02-25' });
+      
+      const todoId = createResponse.body.id;
+
+      const response = await request(app).get(`/api/todos/${todoId}`);
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('isOverdue');
+      expect(response.body.isOverdue).toBe(true);
+    });
+
+    it('PUT /api/todos/:id should return updated todo with isOverdue field', async () => {
+      // Create future todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ title: 'Task to update', dueDate: '2026-03-01' });
+      
+      const todoId = createResponse.body.id;
+      expect(createResponse.body.isOverdue).toBe(false);
+
+      // Update to past due date
+      const updateResponse = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ title: 'Task to update', dueDate: '2026-02-20' });
+
+      expect(updateResponse.status).toBe(200);
+      expect(updateResponse.body).toHaveProperty('isOverdue');
+      expect(updateResponse.body.isOverdue).toBe(true);
+    });
+  });
+
   // Backward compatibility tests for old /api/items endpoints
   describe('GET /api/items (backward compatibility)', () => {
     it('should return array of items', async () => {
